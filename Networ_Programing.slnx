@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="001_PortScaner/001_PortScaner.csproj" />
+  <Project Path="002_ChatClient/002_ChatClient.csproj" />
+  <Project Path="002_ChatServer/002_ChatServer.csproj" />
+</Solution>

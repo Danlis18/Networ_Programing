@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace _002_ChatClient
+namespace _003_SetrverClient
 {
     public class Sms
     {

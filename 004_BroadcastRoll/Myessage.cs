@@ -9,6 +9,7 @@ namespace _003_BroadcastChat
         public string ComputerName { get; set; } = SystemInformation.ComputerName;
         public bool IsOnline { get; set; }
 
+        public int count { get; set; }
         public string Message { get; set; }
         
          public override string ToString()

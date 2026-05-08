@@ -4,4 +4,6 @@
   <Project Path="002_ChatServer/002_ChatServer.csproj" />
   <Project Path="003_BroadcastChat/003_BroadcastChat.csproj" Id="d1018505-ebe7-476c-94f9-dc6ad4c6242a" />
   <Project Path="004_BroadcastRoll/004_BroadcastRoll.csproj" />
+  <Project Path="005_MultiacastServer/005_MultiacastServer.csproj" />
+  <Project Path="006_MulticastClient/006_MulticastClient.csproj" />
 </Solution>

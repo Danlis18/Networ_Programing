@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Windows.Forms;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace _003_BroadcastChat
 {
@@ -100,15 +102,15 @@ namespace _003_BroadcastChat
             main.Controls.Add(strBtn);
 
             rollBtn.Text = "ROLL";
-            rollBtn.Size = new Size(110, 35);
-            rollBtn.Location = new Point(10, 30);
+            rollBtn.Size = new Size(210, 40); 
+            rollBtn.Location = new Point(25, 30);
             rollBtn.BackColor = Color.FromArgb(88, 101, 242);
             rollBtn.ForeColor = Color.White;
             rollBtn.FlatStyle = FlatStyle.Flat;
             rollBtn.FlatAppearance.BorderSize = 0;
             rollBtn.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             rollBtn.Click += button3_Click;
-            main.Controls.Add(rollBtn);
+            sidebar.Controls.Add(rollBtn);
             rollBtn.Enabled = false;
 
             //Get online computers in local network
@@ -193,117 +195,48 @@ namespace _003_BroadcastChat
             rollBtn.Enabled = false;
             int rollResult = randomRoll();
 
-            Myessage myMessage = new Myessage()
-            {
-                ComputerName = SystemInformation.ComputerName,
-                Message = rollResult.ToString()
-            };
-
-            byte[] data = Serialazer.ObjectToByteArray(myMessage);
-
-            try
-            {
-                msgSend.Connect(IPAddress.Broadcast, sgPortReceive);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Send error");
-            }
-
-            msgSend.Send(data, data.Length);
+            GeneralMessageSend(sender, rollResult.ToString());
         }
 
         //Start round
         private void button2_Click(object? sender, EventArgs e)
         {
             timer2.Start();
+            textBox1.Clear();
 
-            Myessage myMessage = new Myessage()
-            {
-                ComputerName = SystemInformation.ComputerName,
-                Message = "Round Started"
-            };
-
-            byte[] data = Serialazer.ObjectToByteArray(myMessage);
-
-            try
-            {
-                msgSend.Connect(IPAddress.Broadcast, sgPortReceive);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Send error");
-            }
-
-            msgSend.Send(data, data.Length);
+            GeneralMessageSend(sender, "Round Started");
         }
-
-
 
         private void Form1_Load(object sender, EventArgs e)
         {
         }
 
+        private int randomRoll()
+        {
+            Random random = new Random();
+            int rollResult = random.Next(1, 7);
+
+            return rollResult;
+        }
+
+
         private void timer1_tick(object sender, EventArgs e)
         {
-
-            /*Myessage myMessage = new Myessage()
-            {
-                ComputerName = SystemInformation.ComputerName,
-                IsOnline = true,
-                Message = textBox2.Text
-            };
-
-            byte[] data = Serialazer.ObjectToByteArray(myMessage);
-
-            //255.255.255.255 - це спеціальна адреса, яка використовується для відправки пакетів на всі пристрої в локальній мережі (broadcast)
-
-            try
-            {
-                clientSend.Connect(IPAddress.Broadcast, portReceive);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Send error");
-            }
-
-            clientSend.Send(data, data.Length);*/
-
-            GeneralCheker(sender, true);
+            GeneralSend(sender, true, "");
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            /*Myessage myMessage = new Myessage()
-            {
-                ComputerName = SystemInformation.ComputerName,
-                IsOnline = false,
-                Message = textBox2.Text
-            };
-
-            byte[] data = Serialazer.ObjectToByteArray(myMessage);
-
-            try
-            {
-                clientSend.Connect(IPAddress.Broadcast, portReceive);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Send error");
-            }
-
-            clientSend.Send(data, data.Length);*/
-
-            GeneralCheker(sender, false);
+            GeneralSend(sender, false, "");
         }
 
-        private void GeneralCheker(object sender, bool IsOnline)
+        private void GeneralSend(object sender, bool IsOnline, string message)
         {
             Myessage myMessage = new Myessage()
             {
                 ComputerName = SystemInformation.ComputerName,
                 IsOnline = IsOnline,
-                Message = textBox2.Text
+                Message = message
             };
 
             byte[] data = Serialazer.ObjectToByteArray(myMessage);
@@ -320,22 +253,12 @@ namespace _003_BroadcastChat
             clientSend.Send(data, data.Length);
         }
 
-        private int randomRoll()
+        private void GeneralMessageSend(object sender, string message)
         {
-            Random random = new Random();
-            int rollResult = random.Next(1, 7);
-
-            return rollResult;
-        }
-
-        private void timer2_Tick(object sender, EventArgs e)
-        {
-            timer2.Stop();
-
             Myessage myMessage = new Myessage()
             {
                 ComputerName = SystemInformation.ComputerName,
-                Message = "Round Stopped"
+                Message = message
             };
 
             byte[] data = Serialazer.ObjectToByteArray(myMessage);
@@ -350,21 +273,41 @@ namespace _003_BroadcastChat
             }
 
             msgSend.Send(data, data.Length);
+        }
+
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            timer2.Stop();
+
+            GeneralMessageSend(sender, "Round Stopped");
+
+            textBox1.Clear();
+
+            string s = rollResults.Average(r => int.Parse(r.Message)).ToString();
+            string sMax = rollResults.Max(r => int.Parse(r.Message)).ToString();
+
+            GeneralMessageSend("Roller: ", "Average - " + s + ", Win - " + sMax);
+
 
             string roundResultsText = "";
+
+            int rollr = 0;
 
             rollResults.OrderByDescending(r => int.Parse(r.Message)).ToList().ForEach(r =>
             {
                 roundResultsText += $"--- {r.ComputerName} rolled a {r.Message} ---{Environment.NewLine}";
+                rollr = Convert.ToInt32(r.Message);
             });
 
-            myMessage = new Myessage()
+
+
+            Myessage result = new Myessage()
             {
                 ComputerName = SystemInformation.ComputerName,
                 Message = "Result: " + Environment.NewLine + roundResultsText
             };
 
-            data = Serialazer.ObjectToByteArray(myMessage);
+            byte[] data = Serialazer.ObjectToByteArray(result);
 
             try
             {
@@ -375,9 +318,24 @@ namespace _003_BroadcastChat
                 MessageBox.Show(ex.Message, "Send error");
             }
 
-
             msgSend.Send(data, data.Length);
 
+            Thread.Sleep(4000);
+
+            textBox1.Clear();
+
+            result = new Myessage()
+            {
+                ComputerName = SystemInformation.ComputerName
+            };
+
+            rollResults.Where(r => r.ComputerName == result.ComputerName).First().count += rollr;
+
+            MessageBox.Show($"{rollResults.Where(r => r.ComputerName == result.ComputerName).First().count}");
+
+            Thread.Sleep(4000);
+
+            textBox1.Clear();
         }
     }
 }

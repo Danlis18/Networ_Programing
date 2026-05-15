@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace _003_BroadcastChat
 {
@@ -14,21 +13,27 @@ namespace _003_BroadcastChat
         UdpClient msgReceive = null;
         List<Myessage> rollResults = new List<Myessage>();
 
+        Button strBtn = new Button();
         Button rollBtn = new Button();
+
+        object rollLock = new object();
+        Random random = new Random();
+        int myTotalCount = 0;
 
         int portSend = 47023;
         int portReceive = 47025;
         int msgPortSend = 47020;
         int sgPortReceive = 47021;
 
-        string ip = "192.168.43.67";
+        string ip = "192.168.56.1";
 
         public Form1()
         {
             InitializeComponent();
 
             IPAddress localIP = IPAddress.Parse(ip);
-            clientSend = new UdpClient(new IPEndPoint(localIP, portSend));
+
+            clientSend = new UdpClient(new IPEndPoint(localIP, portSend)); 
             clientReceive = new UdpClient(new IPEndPoint(localIP, portReceive));
 
             msgSend = new UdpClient(new IPEndPoint(localIP, msgPortSend));
@@ -89,7 +94,6 @@ namespace _003_BroadcastChat
             textBox2.BorderStyle = BorderStyle.None;
             textBox2.Font = new Font("Segoe UI", 11);
 
-            Button strBtn = new Button();
             strBtn.Text = "Start Round";
             strBtn.Size = new Size(110, 35);
             strBtn.Location = new Point(520, 425);
@@ -125,6 +129,9 @@ namespace _003_BroadcastChat
 
                     Myessage message = Serialazer.ByteArrayToObject<Myessage>(data);
 
+                    if (message == null || string.IsNullOrWhiteSpace(message.ComputerName))
+                        continue;
+
                     listBox1.Invoke(() =>
                     {
                         if (!listBox1.Items.Contains(message.ComputerName))
@@ -152,23 +159,25 @@ namespace _003_BroadcastChat
 
                     Myessage message = Serialazer.ByteArrayToObject<Myessage>(data);
 
-                    textBox1.Invoke(() =>
-                    {
-                        textBox1.Text += $"{message.ComputerName}: {message.Message}{Environment.NewLine}";
-                    });
-
+                    if (message == null || string.IsNullOrWhiteSpace(message.ComputerName))
+                        continue;
 
                     if (message.Message == "Round Started")
                     {
+                        lock (rollLock)
+                        {
+                            rollResults.Clear();
+                        }
+
                         Invoke(() =>
                         {
+                            textBox1.Clear();
                             textBox1.Text += $"--- {message.ComputerName} started a new round ---{Environment.NewLine}";
                             strBtn.Enabled = false;
                             rollBtn.Enabled = true;
                         });
                     }
-
-                    if (message.Message == "Round Stopped")
+                    else if (message.Message == "Round Stopped")
                     {
                         Invoke(() =>
                         {
@@ -177,23 +186,37 @@ namespace _003_BroadcastChat
                             rollBtn.Enabled = false;
                         });
                     }
-                    if (int.TryParse(message.Message, out int rollResult))
+                    else if (int.TryParse(message.Message, out int rollResult))
                     {
-                        //Invoke(() =>
-                        //{
-                        //    textBox1.Text += $"--- {message.ComputerName} rolled a {rollResult} ---{Environment.NewLine}";
-                        //});
+                        AddRollResult(message);
 
-                        rollResults.Add(message);
+                        Invoke(() =>
+                        {
+                            textBox1.Text += $"--- {message.ComputerName} rolled a {rollResult} ---{Environment.NewLine}";
+                        });
+                    }
+                    else
+                    {
+                        textBox1.Invoke(() =>
+                        {
+                            textBox1.Text += $"{message.ComputerName}: {message.Message}{Environment.NewLine}";
+                        });
                     }
                 }
             }); 
         }
-
         private void button3_Click(object? sender, EventArgs e)
         {
             rollBtn.Enabled = false;
             int rollResult = randomRoll();
+
+            Myessage myMessage = new Myessage()
+            {
+                ComputerName = SystemInformation.ComputerName,
+                Message = rollResult.ToString()
+            };
+
+            AddRollResult(myMessage);
 
             GeneralMessageSend(sender, rollResult.ToString());
         }
@@ -204,21 +227,45 @@ namespace _003_BroadcastChat
             timer2.Start();
             textBox1.Clear();
 
+            lock (rollLock)
+            {
+                rollResults.Clear();
+            }
+
+            strBtn.Enabled = false;
+            rollBtn.Enabled = true;
+
             GeneralMessageSend(sender, "Round Started");
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            timer1.Start();
         }
 
         private int randomRoll()
         {
-            Random random = new Random();
-            int rollResult = random.Next(1, 7);
-
-            return rollResult;
+            lock (random)
+            {
+                int rollResult = random.Next(1, 7);
+                return rollResult;
+            }
         }
 
+        private void AddRollResult(Myessage message)
+        {
+            lock (rollLock)
+            {
+                Myessage old = rollResults.Where(r => r.ComputerName == message.ComputerName).FirstOrDefault();
+
+                if (old != null)
+                {
+                    rollResults.Remove(old);
+                }
+
+                rollResults.Add(message);
+            }
+        }
 
         private void timer1_tick(object sender, EventArgs e)
         {
@@ -228,6 +275,11 @@ namespace _003_BroadcastChat
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             GeneralSend(sender, false, "");
+
+            clientSend.Close();
+            clientReceive.Close();
+            msgSend.Close();
+            msgReceive.Close();
         }
 
         private void GeneralSend(object sender, bool IsOnline, string message)
@@ -244,13 +296,12 @@ namespace _003_BroadcastChat
             try
             {
                 clientSend.Connect(IPAddress.Broadcast, portReceive);
+                clientSend.Send(data, data.Length);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Send error");
             }
-
-            clientSend.Send(data, data.Length);
         }
 
         private void GeneralMessageSend(object sender, string message)
@@ -266,13 +317,12 @@ namespace _003_BroadcastChat
             try
             {
                 msgSend.Connect(IPAddress.Broadcast, sgPortReceive);
+                msgSend.Send(data, data.Length);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Send error");
             }
-
-            msgSend.Send(data, data.Length);
         }
 
         private void timer2_Tick(object sender, EventArgs e)
@@ -281,25 +331,37 @@ namespace _003_BroadcastChat
 
             GeneralMessageSend(sender, "Round Stopped");
 
+            List<Myessage> results;
+
+            lock (rollLock)
+            {
+                results = rollResults.ToList();
+                rollResults.Clear();
+            }
+
             textBox1.Clear();
 
-            string s = rollResults.Average(r => int.Parse(r.Message)).ToString();
-            string sMax = rollResults.Max(r => int.Parse(r.Message)).ToString();
+            if (results.Count == 0)
+            {
+                GeneralMessageSend(sender, "Result: nobody rolled this round");
+                textBox1.Text += $"Result: nobody rolled this round{Environment.NewLine}";
+
+                strBtn.Enabled = true;
+                rollBtn.Enabled = false;
+                return;
+            }
+
+            string s = results.Average(r => int.Parse(r.Message)).ToString();
+            string sMax = results.Max(r => int.Parse(r.Message)).ToString();
 
             GeneralMessageSend("Roller: ", "Average - " + s + ", Win - " + sMax);
 
-
             string roundResultsText = "";
 
-            int rollr = 0;
-
-            rollResults.OrderByDescending(r => int.Parse(r.Message)).ToList().ForEach(r =>
+            results.OrderByDescending(r => int.Parse(r.Message)).ToList().ForEach(r =>
             {
                 roundResultsText += $"--- {r.ComputerName} rolled a {r.Message} ---{Environment.NewLine}";
-                rollr = Convert.ToInt32(r.Message);
             });
-
-
 
             Myessage result = new Myessage()
             {
@@ -312,30 +374,26 @@ namespace _003_BroadcastChat
             try
             {
                 msgSend.Connect(IPAddress.Broadcast, sgPortReceive);
+                msgSend.Send(data, data.Length);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Send error");
             }
 
-            msgSend.Send(data, data.Length);
+            textBox1.Text += result.Message + Environment.NewLine;
+            textBox1.Text += "Average - " + s + ", Win - " + sMax + Environment.NewLine;
 
-            Thread.Sleep(4000);
+            Myessage myResult = results.Where(r => r.ComputerName == SystemInformation.ComputerName).FirstOrDefault();
 
-            textBox1.Clear();
-
-            result = new Myessage()
+            if (myResult != null)
             {
-                ComputerName = SystemInformation.ComputerName
-            };
+                myTotalCount += int.Parse(myResult.Message);
+                MessageBox.Show($"{myTotalCount}");
+            }
 
-            rollResults.Where(r => r.ComputerName == result.ComputerName).First().count += rollr;
-
-            MessageBox.Show($"{rollResults.Where(r => r.ComputerName == result.ComputerName).First().count}");
-
-            Thread.Sleep(4000);
-
-            textBox1.Clear();
+            strBtn.Enabled = true;
+            rollBtn.Enabled = false;
         }
     }
 }

@@ -4,6 +4,11 @@
   <Project Path="002_ChatServer/002_ChatServer.csproj" />
   <Project Path="003_BroadcastChat/003_BroadcastChat.csproj" Id="d1018505-ebe7-476c-94f9-dc6ad4c6242a" />
   <Project Path="004_BroadcastRoll/004_BroadcastRoll.csproj" />
+  <Project Path="005_Chat/005_Chat.csproj" />
   <Project Path="005_MultiacastServer/005_MultiacastServer.csproj" />
   <Project Path="006_MulticastClient/006_MulticastClient.csproj" />
+  <Project Path="007_SMTP-2step/007_SMTP-2step.csproj" Id="04032521-441c-423c-a352-cd72268c96bd" />
+  <Project Path="007_SMTP-ex1/007_SMTP-ex1.csproj" Id="1b448e57-a147-4a44-81dd-8b2dc409a25a" />
+  <Project Path="008_HTTP-weatherLook/008_HTTP-weatherLook.csproj" Id="0be142ee-e6bd-4eb0-b5d5-735392062cfc" />
+  <Project Path="008_HTTP/008_HTTP.csproj" Id="c1e2802c-a291-44c7-afd6-82ce6d85626a" />
 </Solution>

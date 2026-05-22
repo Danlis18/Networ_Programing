@@ -11,4 +11,8 @@
   <Project Path="007_SMTP-ex1/007_SMTP-ex1.csproj" Id="1b448e57-a147-4a44-81dd-8b2dc409a25a" />
   <Project Path="008_HTTP-weatherLook/008_HTTP-weatherLook.csproj" Id="0be142ee-e6bd-4eb0-b5d5-735392062cfc" />
   <Project Path="008_HTTP/008_HTTP.csproj" Id="c1e2802c-a291-44c7-afd6-82ce6d85626a" />
+  <Project Path="008_HTTP_JSON/008_HTTP_JSON.csproj" Id="58a2b814-4ed2-455b-979c-612c0970f017" />
+  <Project Path="009_HTTP_Curency/009_HTTP_Curency.csproj" Id="0fa92b55-c93c-42d7-9ffe-52dfba2391d6" />
+  <Project Path="010_TelegramBot/010_TelegramBot.csproj" Id="f33e88ed-ee1a-4fd6-b12f-f2e78133d41d" />
+  <Project Path="011_BotCurrency/011_BotCurrency.csproj" Id="67a32fd6-d94e-4059-861e-72883b60b611" />
 </Solution>

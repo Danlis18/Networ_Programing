@@ -11,37 +11,38 @@ namespace _009_HTTP_Curency
 {
     public partial class Form1 : Form
     {
-        private ComboBox fromCurrency;
-        private ComboBox toCurrency;
-        private DateTimePicker datePicker;
-        private TextBox amountBox;
-        private Label rateValue;
-        private Label resultValue;
         private ComboBox fromBox;
         private ComboBox toBox;
+        private DateTimePicker datePicker;
 
-        string from = "USD";
-        string to = "UAH";
-        DateTime date = new DateTime(2009, 2, 9);
-        string apiKey = "fxr_live_9f3bedbca8ed6670f3a13671178762ccd448";
-        
+        private Label rateValue;
+        private Label pairText;
+        private Label dateText;
 
-        HttpClient client = new HttpClient();
+        private Button okButton;
+
+        private readonly HttpClient client = new HttpClient();
+
+        private string apiKey = "fxr_live_f9bc67c95d236202afd7bcdc7187eac2e208";
+        private string baseCurrency = "USD";
+
+        private JObject loadedRates;
+        private string loadedDate = "";
 
         public Form1()
         {
             InitializeComponent();
-            this.Load += Form1_Load;
-        }
 
-        private async void Form1_Load(object sender, EventArgs e)
-        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.Clear();
             CreateInterface();
-            await LoadCurrenciesAsync();
+            this.Shown += async (s, e) => await LoadCurrenciesAsync();
         }
 
         private void CreateInterface()
         {
+            this.Controls.Clear();
+
             this.Text = "Currency Converter";
             this.Size = new Size(760, 470);
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -79,16 +80,17 @@ namespace _009_HTTP_Curency
             toBox = CreateComboBox(130, 80);
 
             Label dateLabel = CreateLabel("Date", 35, 135);
+
             datePicker = new DateTimePicker();
             datePicker.Location = new Point(130, 130);
             datePicker.Size = new Size(170, 30);
             datePicker.Format = DateTimePickerFormat.Custom;
             datePicker.CustomFormat = "dd.MM.yyyy";
-            datePicker.Value = new DateTime(2018, 5, 9);
+            datePicker.Value = DateTime.Now;
             datePicker.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            datePicker.Enabled = false;
 
-            Button okButton = new Button();
-            okButton.Click += okButton_ClickAsync;
+            okButton = new Button();
             okButton.Text = "Convert";
             okButton.Size = new Size(170, 38);
             okButton.Location = new Point(130, 185);
@@ -98,6 +100,7 @@ namespace _009_HTTP_Curency
             okButton.FlatAppearance.BorderSize = 0;
             okButton.Font = new Font("Segoe UI Semibold", 10, FontStyle.Bold);
             okButton.Cursor = Cursors.Hand;
+            okButton.Click += okButton_ClickAsync;
 
             card.Controls.Add(fromLabel);
             card.Controls.Add(fromBox);
@@ -120,31 +123,39 @@ namespace _009_HTTP_Curency
             resultTitle.AutoSize = true;
             resultTitle.Location = new Point(25, 30);
 
-            Label rateText = new Label();
-            rateText.Text = "Exchange rate";
-            rateText.ForeColor = Color.FromArgb(140, 150, 175);
-            rateText.Font = new Font("Segoe UI", 10);
-            rateText.AutoSize = true;
-            rateText.Location = new Point(25, 85);
+            Label rateLabel = new Label();
+            rateLabel.Text = "Exchange rate";
+            rateLabel.ForeColor = Color.FromArgb(140, 150, 175);
+            rateLabel.Font = new Font("Segoe UI", 10);
+            rateLabel.AutoSize = true;
+            rateLabel.Location = new Point(25, 85);
 
             rateValue = new Label();
-            rateValue.Text = "1.1879";
+            rateValue.Text = "Loading...";
             rateValue.ForeColor = Color.White;
-            rateValue.Font = new Font("Segoe UI Semibold", 32, FontStyle.Bold);
+            rateValue.Font = new Font("Segoe UI Semibold", 26, FontStyle.Bold);
             rateValue.AutoSize = true;
             rateValue.Location = new Point(22, 110);
 
-            Label pairText = new Label();
-            pairText.Text = "EUR → USD";
+            pairText = new Label();
+            pairText.Text = "USD → UAH";
             pairText.ForeColor = Color.FromArgb(140, 150, 175);
             pairText.Font = new Font("Segoe UI", 11);
             pairText.AutoSize = true;
             pairText.Location = new Point(28, 190);
 
+            dateText = new Label();
+            dateText.Text = "Date: -";
+            dateText.ForeColor = Color.FromArgb(100, 110, 135);
+            dateText.Font = new Font("Segoe UI", 9);
+            dateText.AutoSize = true;
+            dateText.Location = new Point(28, 220);
+
             resultCard.Controls.Add(resultTitle);
-            resultCard.Controls.Add(rateText);
+            resultCard.Controls.Add(rateLabel);
             resultCard.Controls.Add(rateValue);
             resultCard.Controls.Add(pairText);
+            resultCard.Controls.Add(dateText);
         }
         private Label CreateLabel(string text, int x, int y)
         {
@@ -166,48 +177,28 @@ namespace _009_HTTP_Curency
             return box;
         }
 
-
         private async Task LoadCurrenciesAsync()
         {
             try
             {
-                fromBox.Items.Clear();
-                toBox.Items.Clear();
+                okButton.Enabled = false;
 
-                fromBox.Items.Add("Loading...");
-                toBox.Items.Add("Loading...");
-                fromBox.SelectedIndex = 0;
-                toBox.SelectedIndex = 0;
+                string uri = $"https://api.fxratesapi.com/latest?apikey={apiKey}&base={baseCurrency}";
 
-                string url = $"https://api.fxratesapi.com/latest?api_key={apiKey}&base=USD&amount=100";
+                string json = await client.GetStringAsync(uri);
 
-                client.DefaultRequestHeaders.Clear();
-                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+                JObject exchangeData = JObject.Parse(json);
 
-                string json = await client.GetStringAsync(url);
+                bool success = exchangeData["success"] != null &&
+                               exchangeData["success"].Value<bool>();
 
-                JObject data = JObject.Parse(json);
+                loadedRates = exchangeData["rates"] as JObject;
+                loadedDate = exchangeData["date"].ToString();
 
-                bool success = data["success"] != null && data["success"].Value<bool>();
-
-                if (!success)
-                {
-                    MessageBox.Show("API повернув помилку:\n" + json);
-                    return;
-                }
-
-                JObject rates = data["rates"] as JObject;
-
-                if (rates == null)
-                {
-                    MessageBox.Show("Не знайдено rates. Відповідь API:\n" + json);
-                    return;
-                }
-
-                string[] codes = rates.Properties()
-                                      .Select(p => p.Name)
-                                      .OrderBy(code => code)
-                                      .ToArray();
+                string[] codes = loadedRates.Properties()
+                                            .Select(p => p.Name)
+                                            .OrderBy(code => code)
+                                            .ToArray();
 
                 fromBox.Items.Clear();
                 toBox.Items.Clear();
@@ -217,52 +208,78 @@ namespace _009_HTTP_Curency
 
                 fromBox.SelectedItem = codes.Contains("USD") ? "USD" : codes[0];
                 toBox.SelectedItem = codes.Contains("UAH") ? "UAH" : codes[0];
+
+                dateText.Text = "Date: " + loadedDate;
+
+                ConvertCurrency();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Помилка завантаження валют:\n" + ex.Message);
-
-                fromBox.Items.Clear();
-                toBox.Items.Clear();
-
-                fromBox.Items.AddRange(new object[] { "USD", "EUR", "UAH", "GBP", "PLN" });
-                toBox.Items.AddRange(new object[] { "USD", "EUR", "UAH", "GBP", "PLN" });
-
-                fromBox.SelectedItem = "USD";
-                toBox.SelectedItem = "UAH";
+            }
+            finally
+            {
+                okButton.Enabled = true;
             }
         }
-
-        private async void okButton_ClickAsync(object sender, EventArgs e)
+        private decimal GetCurrencyRate(string currencyCode)
         {
-            if (fromBox.SelectedItem == null || toBox.SelectedItem == null)
+            if (currencyCode == baseCurrency)
             {
-                MessageBox.Show("Оберіть валюти");
-                return;
+                return 1;
             }
 
-
-            string fromCurrency = fromBox.SelectedItem.ToString();
-            string toCurrency = toBox.SelectedItem.ToString();
-
-            if (fromCurrency == toCurrency)
+            if (loadedRates == null || loadedRates[currencyCode] == null)
             {
-                rateValue.Text = "1";
-                return;
+                throw new Exception("Не знайдено валюту: " + currencyCode);
             }
 
-            string selectedDate = datePicker.Value.ToString("yyyy-MM-dd");
+            return loadedRates[currencyCode].Value<decimal>();
+        }
+        private void ConvertCurrency()
+        {
+            try
+            {
+                if (loadedRates == null)
+                {
+                    MessageBox.Show("Курси ще не завантажені");
+                    return;
+                }
 
-            string uri = $"https://api.fxratesapi.com/convert?{selectedDate}&from={fromCurrency}&to={toCurrency}";
-            string data = await client.GetStringAsync(uri);
+                if (fromBox.SelectedItem == null || toBox.SelectedItem == null)
+                {
+                    MessageBox.Show("Оберіть валюти");
+                    return;
+                }
 
-            JObject exchangeData = JObject.Parse(data);
+                string fromCurrency = fromBox.SelectedItem.ToString();
+                string toCurrency = toBox.SelectedItem.ToString();
 
-            JObject rates = (JObject)exchangeData["rates"]!;
+                if (fromCurrency == toCurrency)
+                {
+                    rateValue.Text = "1";
+                    pairText.Text = $"1 {fromCurrency} = 1 {toCurrency}";
+                    return;
+                }
 
-            decimal rate = rates[toCurrency].Value<decimal>();
+                decimal fromRate = GetCurrencyRate(fromCurrency);
+                decimal toRate = GetCurrencyRate(toCurrency);
 
-            rateValue.Text = rate.ToString("0.####", CultureInfo.InvariantCulture);
+                decimal resultRate = toRate / fromRate;
+
+                string resultText = resultRate.ToString("0.####", CultureInfo.InvariantCulture);
+
+                rateValue.Text = resultText;
+                pairText.Text = $"1 {fromCurrency} = {resultText} {toCurrency}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Помилка конвертації:\n" + ex.Message);
+            }
+        }
+        private void okButton_ClickAsync(object sender, EventArgs e)
+        {
+            ConvertCurrency();
         }
     }
 }

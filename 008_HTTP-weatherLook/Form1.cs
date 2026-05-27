@@ -26,7 +26,10 @@ namespace _008_HTTP_weatherLook
         private Label lblCityTitle;
 
         private HttpClient httpClient = new HttpClient();
-        private string uri = "";
+        private string ApiKey = "0844a69f62c606c23b3d7fe28770fcf9";
+
+
+
         public Form1()
         {
             InitializeComponent();
@@ -194,9 +197,26 @@ namespace _008_HTTP_weatherLook
 
         private async Task LoadWeatherAsync()
         {
-            uri = $"https://api.openweathermap.org/data/2.5/weather?q={txtCity.Text}&appid=YOUR_API_KEY&units=metric";
+            string uri = $"https://api.openweathermap.org/data/2.5/weather?q={txtCity.Text}&appid={ApiKey}&mode=xml&units=metric";
             string conect = await httpClient.GetStringAsync(uri);
-            //Source source = Serializer.Deserialize<Source>(conect);
+            Current weatherData = Serializer.Deserialize<Current>(conect);
+
+            lblTemp.Text = $"{weatherData.Temperature.Value}°C";
+            lblFeel.Text = $"Real Feel {weatherData.Feels_like.Value}°";
+            lblDescription.Text = weatherData.Weather.Value;
+            lblCityTitle.Text = $"{weatherData.City.Name}, {weatherData.City.Country}";
+            lblSunrise.Text = $"Sunrise: {DateTime.Parse(weatherData.City.Sun.Rise).ToLocalTime():HH:mm}";
+            lblSunset.Text = $"Sunset:   {DateTime.Parse(weatherData.City.Sun.Set).ToLocalTime():HH:mm}";
+            lblDuration.Text = $"Duration: {DateTime.Parse(weatherData.City.Sun.Set).ToLocalTime() - DateTime.Parse(weatherData.City.Sun.Rise).ToLocalTime()}";
+
+            string iconCode = weatherData.Weather.Icon;
+            string iconUrl = $"https://openweathermap.org/img/wn/{iconCode}@2x.png";
+            byte[] imageBytes = await httpClient.GetByteArrayAsync(iconUrl);
+
+            using (MemoryStream ms = new MemoryStream(imageBytes))
+            {
+                pbWeather.Image = new Bitmap(ms);
+            }
         }
     }
 }
